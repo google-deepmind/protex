@@ -1,31 +1,155 @@
-# protex
+# ProtEx
 
-TODO(b/347742898): Add a description for your new project, explain what is
-being released here, etc... Additional, the following sections are normally
-expected for all releases. Feel free to add additional sections if appropriate
-for your project.
+This repository contains open source code related to the paper [ProtEx: A Retrieval-Augmented Approach for Protein Function Prediction](https://www.biorxiv.org/content/10.1101/2024.05.30.596539v1).
 
 ## Installation
 
-Write instructions for how the user should install your code. The instructions
-should ideally be valid when copy-pasted. You can combine this with the Usage
-section if there's no separate installation step.
+Clone the repository:
 
-## Usage
+```shell
+git clone https://github.com/google-deepmind/protex.git
+```
 
-Write example usage of your code. The instructions should ideally be valid when
-copy-pasted, and will be used by your technical reviewer to verify that your
-package functions correctly.
+It is then recommended to setup a virtual environment. We provide an example
+using `conda`:
+
+```shell
+conda create -n protex python=3.10
+conda activate protex
+```
+
+Then install dependencies specified in `setup.py`:
+
+```shell
+pip install .
+```
+
+## Overview
+
+The code, along with the released model predictions, support reproducing the main results from the paper. The code is organized as follows:
+
+* `blast/` - Contains conversion scripts for reproducing BLAST results.
+* `common/` - Some common utility libraries.
+* `data/` - Contains conversion scripts for various datasets to a common format.
+* `eval/` - Contains tools for computing various evaluation metrics.
+
+We convert datasets to a common format consisting of newline separated json files, where each has the following keys:
+
+*   `sequence` - String of protein sequence.
+*   `accession` - String for unique identifier, e.g. UniProt accession.
+*   `labels` - List of strings for labels, e.g. EC numbers.
+
+## Usage Examples
+
+### ProteInfer
+
+Here we provide a usage example focused on reproducing the results for the ProteInfer dataset for the clustered EC split. Conversion and evaluation scripts for other datasets
+can be found in `data/` and `/eval`, and usages are similar.
+
+The [original dataset](https://google-research.github.io/proteinfer/) is available on GCP at `gs:///brain-genomics-public/research/proteins/proteinfer/datasets/swissprot/`. We can set our input to the path to the EC clustered test split:
+
+```shell
+CLUSTERED_EC_TEST_TFR="gs://brain-genomics-public/research/proteins/proteinfer/datasets/swissprot/clustered/test.tfrecord"
+```
+
+We will assume that the variable `DATA_DIR` is set to readable and writable
+directory, such as `DATA_DIR=/tmp/`.
+
+We can then run the data conversion script:
+
+```shell
+CLUSTERED_EC_TEST_JSONL="${DATA_DIR}/proteinfer_clustered_ec_test.jsonl"
+python -m data.convert_proteinfer \
+--alsologtostderr \
+--input=${CLUSTERED_EC_TEST_TFR} \
+--output=${CLUSTERED_EC_TEST_JSONL} \
+--labels=ec
+```
+
+Model predictions for ProtEx on all test splits are available at `gs://protex/predictions`. Specifically, the clustered EC predictions are here:
+
+```
+PREDS_PROTEX=gs://protex/predictions/proteinfer-clustered-ec-test-protex.jsonl
+```
+
+We can then reproduce the max micro-averaged F1 metrics reported for this split with the following script:
+
+```shell
+python -m eval.eval_micro_f1 \
+--alsologtostderr \
+--dataset=${CLUSTERED_EC_TEST_JSONL} \
+--predictions=${PREDS_PROTEX}
+```
+
+We also released BLAST predictions, so the above script can also be used with the following `--predictions` argument to reproduce the reported BLAST results:
+
+```
+PREDS_BLAST=gs://protex/predictions/proteinfer-clustered-ec-test-protex.jsonl
+```
+
+#### Reproducing BLAST
+
+We also released code to reproduce the BLAST predictions. For this we need to also convert the ProteInfer training set:
+
+```shell
+CLUSTERED_EC_TRAIN_TFR="gs://brain-genomics-public/research/proteins/proteinfer/datasets/swissprot/clustered/train.tfrecord"
+CLUSTERED_EC_TRAIN_JSONL="${DATA_DIR}/proteinfer_clustered_ec_train.jsonl
+python -m data.convert_proteinfer \
+--alsologtostderr \
+--input=${CLUSTERED_EC_TRAIN_TFR} \
+--output=${CLUSTERED_EC_TRAIN_JSONL} \
+--labels=ec
+```
+
+We then need to convert both train and test splits to `.fasta` format:
+
+```shell
+CLUSTERED_EC_TRAIN_FASTA="${DATA_DIR}/proteinfer_clustered_ec_train.fasta
+python -m blast.convert_to_fasta \
+--alsologtostderr \
+--input=${CLUSTERED_EC_TRAIN_JSONL} \
+--output=${CLUSTERED_EC_TRAIN_FASTA}
+
+CLUSTERED_EC_TEST_FASTA="${DATA_DIR}/proteinfer_clustered_ec_test.fasta
+python -m blast.convert_to_fasta \
+--alsologtostderr \
+--input=${CLUSTERED_EC_TEST_JSONL} \
+--output=${CLUSTERED_EC_TEST_FASTA}
+```
+
+Note that if `DATA_DIR` refers to a GCP bucket rather than a local directory, the files may need to be copied locally so that they can be read by the BLAST command line tool before proceeding to the next step. We will assume `BLAST_DIR` is set to the location of the BLAST binaries,
+e.g. `BLAST_DIR=".../ncbi-blast-2.14.1+/bin"`.
+
+We can then run BLAST.
+
+```shell
+BLAST_TSV="${DATA_DIR}/blast_proteinfer_clustered_ec_test.tsv"
+${BLAST_DIR}/makeblastdb -in ${CLUSTERED_EC_TRAIN_FASTA} -dbtype prot
+${BLAST_DIR}/blastp -query ${CLUSTERED_EC_TEST_FASTA} -db ${CLUSTERED_EC_TRAIN_FASTA} -outfmt 6 -max_hsps 1 -num_threads 16 -max_target_seqs 1 -out ${BLAST_TSV}
+```
+
+Finally, we can convert the tsv file generated by BLAST to the standard predictions format we are using:
+
+```shell
+BLAST_JSONL=${DATA_DIR}/blast_proteinfer_clustered_ec_test.jsonl
+python -m blast.convert_blast \
+--alsologtostderr \
+--input=${BLAST_TSV} \
+--database_records=${CLUSTERED_EC_TRAIN_FASTA} \
+--output=${BLAST_JSONL}
+```
 
 ## Citing this work
 
-Add citation details here, usually a pastable BibTeX snippet:
+You can cite the preprint of our work as follows:
 
 ```latex
-@article{publicationname,
-      title={Publication Name},
-      author={Author One and Author Two and Author Three},
-      year={2024},
+@article{shaw2024protex,
+  title={ProtEx: A Retrieval-Augmented Approach for Protein Function Prediction},
+  author={Shaw, Peter and Gurram, Bhaskar and Belanger, David and Gane, Andreea and Bileschi, Maxwell L and Colwell, Lucy J and Toutanova, Kristina and Parikh, Ankur P},
+  journal={bioRxiv},
+  URL = {https://www.biorxiv.org/content/early/2024/06/02/2024.05.30.596539},
+  year={2024},
 }
 ```
 
