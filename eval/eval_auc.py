@@ -13,7 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Printed weighted AUC."""
+"""Computes and prints weighted AUC metric.
+
+This metric was used in "Enzyme Function Prediction using Contrastive Learning".
+"""
 
 from absl import app
 from absl import flags

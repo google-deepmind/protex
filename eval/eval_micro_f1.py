@@ -13,7 +13,11 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Print maximum micro-averaged F1 score."""
+"""Computes and prints maximum micro-averaged F1 score.
+
+This metric was used by "ProteInfer, deep networks for protein functional
+inference".
+"""
 
 from absl import app
 from absl import flags

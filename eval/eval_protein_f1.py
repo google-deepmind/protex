@@ -13,11 +13,18 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Print maximum protein-centric F1 score.
+"""Computes and prints maximum protein-centric F1 score.
+
+This is a commonly used metric for evaluating protein function prediction
+methods. Details can be found in "A large-scale evaluation of computational
+protein function prediction" (https://www.nature.com/articles/nmeth.2340).
 
 Note that more efficient implementations exist, such as this one that depends
 on PyTorch:
 https://github.com/DeepGraphLearning/torchdrug/blob/6066fbd82360abb5f270cba1eca560af01b8cc90/torchdrug/metrics/metric.py#L234
+
+However, our goal was to implement the metric in a way that is easier to
+understand and verify and without additional dependencies.
 """
 
 from absl import app
