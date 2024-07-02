@@ -24,8 +24,8 @@ from absl import flags
 import numpy as np
 import sklearn.metrics
 
-from protex.common import jsonl_utils
-from protex.eval import eval_utils
+from common import jsonl_utils
+from eval import eval_utils
 
 
 FLAGS = flags.FLAGS

@@ -7,7 +7,7 @@ This repository contains open source code related to the paper [ProtEx: A Retrie
 Clone the repository:
 
 ```shell
-git clone https://github.com/google-deepmind/protex.git
+git clone https://github.com/google-deepmind/git
 ```
 
 It is then recommended to setup a virtual environment. We provide an example
@@ -69,7 +69,7 @@ python -m data.convert_proteinfer \
 Model predictions for ProtEx on all test splits are available at `gs://protex/predictions`. Specifically, the clustered EC predictions are here:
 
 ```
-PREDS_PROTEX=gs://protex/predictions/proteinfer-clustered-ec-test-protex.jsonl
+PREDS_PROTEX=gs://protex/predictions/proteinfer-clustered-ec-test-jsonl
 ```
 
 We can then reproduce the max micro-averaged F1 metrics reported for this split with the following script:
@@ -84,7 +84,7 @@ python -m eval.eval_micro_f1 \
 We also released BLAST predictions, so the above script can also be used with the following `--predictions` argument to reproduce the reported BLAST results:
 
 ```
-PREDS_BLAST=gs://protex/predictions/proteinfer-clustered-ec-test-protex.jsonl
+PREDS_BLAST=gs://protex/predictions/proteinfer-clustered-ec-test-jsonl
 ```
 
 #### Reproducing BLAST

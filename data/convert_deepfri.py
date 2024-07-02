@@ -27,7 +27,7 @@ from absl import app
 from absl import flags
 import tensorflow as tf
 
-from protex.common import jsonl_utils
+from common import jsonl_utils
 
 
 FLAGS = flags.FLAGS
