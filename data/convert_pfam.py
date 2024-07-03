@@ -23,6 +23,13 @@ The data can be obtained with the following command:
 
 wget
 https://storage.googleapis.com/brain-genomics-public/research/proteins/pfam/clustered_split/pfam_clustered_split__train_dev_test.tar.gz
+
+tar xzf pfam_clustered_split__train_dev_test.tar.gz
+
+Sample command:
+python -m data.convert_pfam \
+    --input=<parent_dir>/pfam_clustered_split/dev/* \
+    --output=<output_dir>/pfam_dev.jsonl
 """
 
 from absl import app
