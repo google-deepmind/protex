@@ -1,4 +1,4 @@
-# Copyright 2024 DeepMind Technologies Limited
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,11 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Converts BLAST scores to the same format as T5X inference output.
+r"""Converts BLAST scores to the same format as T5X inference output.
 
 Output format should have rows like:
 {"inputs": {"accession": "Q0HZU6", "label": "GO:0008150"}, "score": -0.04761}
 """
+
+import collections
 
 from absl import app
 from absl import flags
@@ -34,7 +36,7 @@ flags.DEFINE_string("database_records", "", "Path to database records.")
 
 flags.DEFINE_string("output", "", "Path to write generated scores.")
 
-flags.DEFINE_bool("top", True, "Whether to restrict to top-1.")
+flags.DEFINE_integer("topk", 1, "Limit to this many neighbors per accession.")
 
 
 def _extract_accession(original_string):
@@ -61,26 +63,35 @@ def _load_accession_to_labels_map(path):
   dataset = jsonl_utils.read(path)
   accession_to_labels = {}
   for record in dataset:
-    accession_to_labels[record["accession"]] = record["labels"]
+    accession_to_labels[record["accession"]] = record["label"]
   return accession_to_labels
 
 
+def _load_accession_to_neighbors_dict(path):
+  accession_to_neighbors = collections.defaultdict(list)
+  blast_rows = _read_blast_tsv(path)
+  for query_accession, database_accession, score in blast_rows:
+    accession_to_neighbors[query_accession].append((database_accession, score))
+  return accession_to_neighbors
+
+
 def main(unused_argv):
-  blast_rows = _read_blast_tsv(FLAGS.input)
+  accession_to_neighbors = _load_accession_to_neighbors_dict(FLAGS.input)
   accession_to_labels = _load_accession_to_labels_map(FLAGS.database_records)
 
   rows = []
-  for query_accession, database_accession, score in blast_rows:
-    labels = accession_to_labels[database_accession]
-    for label in labels:
-      json_dict = {
-          "inputs": {
-              "accession": query_accession,
-              "label": label,
-          },
-          "score": score,
-      }
-      rows.append(json_dict)
+  for query_accession, neighbors in accession_to_neighbors.items():
+    for database_accession, score in neighbors[: FLAGS.topk]:
+      labels = accession_to_labels[database_accession]
+      for label in labels:
+        json_dict = {
+            "inputs": {
+                "accession": query_accession,
+                "label": label,
+            },
+            "score": score,
+        }
+        rows.append(json_dict)
   jsonl_utils.write(FLAGS.output, rows)
 
 
