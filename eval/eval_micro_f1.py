@@ -47,7 +47,9 @@ def get_max_f1(true_labels, pred_scores):
   precisions = precisions[:-1]
   recalls = recalls[:-1]
 
-  f1_scores = 2 * precisions * recalls / (precisions + recalls)
+  # Make denominator robust to zeros.
+  denominator = np.where(precisions + recalls == 0, 1, precisions + recalls)
+  f1_scores = 2 * precisions * recalls / denominator
   max_f1_score_idx = np.argmax(f1_scores)
   max_threshold = thresholds[max_f1_score_idx]
   max_f1 = f1_scores[max_f1_score_idx]
